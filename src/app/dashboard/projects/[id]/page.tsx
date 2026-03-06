@@ -23,9 +23,11 @@ export interface TrailerData {
   primaryColor: string;
   assets: {
     screenshotUrl: string;
+    voiceoverUrl?: string; // <-- ADD THIS LINE
   };
   scenes: Array<{
     script: string;
+    animationStyle: string;
     boundingBox: { x: number; y: number; width: number; height: number };
   }>;
 }

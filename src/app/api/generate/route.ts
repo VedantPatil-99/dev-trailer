@@ -15,34 +15,29 @@ export const POST = async (request: Request) => {
         { status: 400 }
       );
 
-    // 1. Playwright: The UPGRADED Virtual Cinematographer
+    // 1. Playwright: The Virtual Cinematographer
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({
       viewport: { width: 1920, height: 1080 },
-      deviceScaleFactor: 2, // <-- FIX: Doubles the resolution to 4K quality!
+      deviceScaleFactor: 2,
       colorScheme: "dark",
     });
 
     const page = await context.newPage();
     await page.goto(liveUrl, { waitUntil: "networkidle" });
-
-    // Get the exact height of the scrolling page to do math later
     const pageHeight = await page.evaluate(
       () => document.documentElement.scrollHeight
     );
-
-    // Capture the entire scrolling page, not just the top!
     const screenshotBuffer = await page.screenshot({ fullPage: true });
     await browser.close();
 
     const base64Image = screenshotBuffer.toString("base64");
 
-    // 2. Gemini 2.5 Flash: The Multi-Scene Director
+    // 2. Gemini 2.5 Flash: The AI Director
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
     const prompt = `
       You are a cinematic Video Director analyzing a high-resolution, full-page website screenshot for "${projectName}".
-      Identify 3 distinct, visually interesting UI components (e.g., Hero Section, Feature Cards, Code Blocks, Pricing, or Footer).
+      Identify EXACTLY 3 distinct, visually interesting UI components (e.g., Hero Section, Feature Cards, Pricing, or Footer).
       
       Return a strictly formatted JSON object matching this structure:
       {
@@ -50,9 +45,9 @@ export const POST = async (request: Request) => {
         "scenes": [
           {
             "script": "1 short, punchy sentence explaining this specific component.",
-            "boundingBox": { "x": number, "y": number, "width": number, "height": number } // Scaled 0-1000
-          },
-          // MUST return exactly 3 scenes
+            "boundingBox": { "x": number, "y": number, "width": number, "height": number }, // Scaled 0-1000
+            "animationStyle": "zoom_in" | "pan_down" | "tilt_up"
+          }
         ]
       }
       Return ONLY raw JSON.
@@ -69,29 +64,69 @@ export const POST = async (request: Request) => {
       .trim();
     const aiData = JSON.parse(cleanJsonString);
 
-    // 3. Math: Descale coordinates for the FULL page height
     const mappedScenes = aiData.scenes.map(
       (scene: {
         script: string;
+        animationStyle: string;
         boundingBox: { x: number; y: number; width: number; height: number };
       }) => ({
         script: scene.script,
+        animationStyle: scene.animationStyle,
         boundingBox: {
           x: (scene.boundingBox.x / 1000) * 1920,
-          y: (scene.boundingBox.y / 1000) * pageHeight, // Use actual page height!
+          y: (scene.boundingBox.y / 1000) * pageHeight,
           width: (scene.boundingBox.width / 1000) * 1920,
           height: (scene.boundingBox.height / 1000) * pageHeight,
         },
       })
     );
 
-    // 4. Return new TrailerData structure
+    // 3. ElevenLabs: The AI Voice Actor
+    let voiceoverUrl = null;
+    const combinedScript = mappedScenes
+      .map((s: { script: string }) => s.script)
+      .join(". ");
+
+    try {
+      // Using 'Adam', a great professional narrator voice ID
+      const elevenRes = await fetch(
+        "https://api.elevenlabs.io/v1/text-to-speech/IKne3meq5aSn9XLyUdCD",
+        {
+          method: "POST",
+          headers: {
+            Accept: "audio/mpeg",
+            "Content-Type": "application/json",
+            "xi-api-key": process.env.ELEVENLABS_API_KEY || "",
+          },
+          body: JSON.stringify({
+            text: combinedScript,
+            model_id: "eleven_multilingual_v2",
+            voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+          }),
+        }
+      );
+
+      if (elevenRes.ok) {
+        const audioArrayBuffer = await elevenRes.arrayBuffer();
+        const audioBuffer = Buffer.from(audioArrayBuffer);
+        voiceoverUrl = `data:audio/mpeg;base64,${audioBuffer.toString("base64")}`;
+      } else {
+        console.warn("ElevenLabs Error:", await elevenRes.text());
+      }
+    } catch (e) {
+      console.error("Failed to generate voiceover", e);
+    }
+
+    // 4. Return the Payload with Voiceover
     const payload = {
       success: true,
       data: {
         projectName: projectName,
         primaryColor: aiData.primaryColor,
-        assets: { screenshotUrl: `data:image/png;base64,${base64Image}` },
+        assets: {
+          screenshotUrl: `data:image/png;base64,${base64Image}`,
+          voiceoverUrl: voiceoverUrl, // <-- Passing the audio to the frontend
+        },
         scenes: mappedScenes,
       },
     };
