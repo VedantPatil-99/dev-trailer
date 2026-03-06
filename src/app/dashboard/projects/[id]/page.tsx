@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 
 import Link from "next/link";
 
@@ -17,6 +17,21 @@ import { useProjects } from "@/hooks/useProjects";
 import { apiClient } from "@/lib/api";
 import { Project } from "@/lib/api";
 
+export interface TrailerData {
+  [key: string]: unknown; // <-- ADD THIS LINE to satisfy VideoPlayerProps!
+  projectName: string;
+  primaryColor: string;
+  script: {
+    intro: string;
+    feature: string;
+    outro: string;
+  };
+  assets: {
+    screenshotUrl: string;
+    boundingBox: { x: number; y: number; width: number; height: number };
+  };
+}
+
 interface ProjectStatus {
   status: "processing" | "completed" | "failed";
   progress: number;
@@ -32,15 +47,32 @@ export default function ProjectDetailsPage({
 }: ProjectDetailsPageProps) {
   const resolvedParams = use(params);
   const projectId = resolvedParams.id;
-  const [videoProps, setVideoProps] = useState<Record<string, unknown> | null>(
-    null
-  );
+  const [trailerData, setTrailerData] = useState<TrailerData | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [script, setScript] = useState("");
   const [projectData, setProjectData] = useState<Project | null>(null);
   const [statusData, setStatusData] = useState<ProjectStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [currentLogIndex, setCurrentLogIndex] = useState(0);
+  const terminalRef = useRef<HTMLDivElement>(null);
+
+  const terminalLogs = [
+    "Initializing Virtual Cinematographer...",
+    "Booting headless Chromium instance...",
+    "Allocating high-res viewport (1920x1080)...",
+    "Navigating to live URL...",
+    "Awaiting DOM hydration and network idle...",
+    "Capturing visual UI state as Base64 buffer...",
+    "Transmitting payload to Gemini AI Director...",
+    "Analyzing visual layout and UI hierarchy...",
+    "Extracting primary brand color signatures...",
+    "Calculating programmatic 3D zoom coordinates...",
+    "Writing punchy promotional script...",
+    "Compiling Remotion frame math...",
+    "Finalizing cinematic Apple-style transitions...",
+    "Rendering complete.",
+  ];
 
   const { updateProjectScript } = useProjects();
   // --- 1. First useEffect: Fetches project and polls status ---
@@ -84,7 +116,7 @@ export default function ProjectDetailsPage({
   // --- 2. Second useEffect: Fetches mock video data when complete ---
   useEffect(() => {
     const fetchVideoData = async () => {
-      if (statusData?.status === "completed" && !videoProps) {
+      if (statusData?.status === "completed" && !trailerData) {
         try {
           const res = await fetch("/api/generate", {
             method: "POST",
@@ -98,8 +130,11 @@ export default function ProjectDetailsPage({
           const data = await res.json();
 
           if (data.success) {
-            setVideoProps(data.data);
-            setScript(data.data.script); // Auto-fills the Script Editor UI
+            setTrailerData(data.data);
+            // Combine the script object into a readable string for the editor
+            setScript(
+              `${data.data.script.intro} ${data.data.script.feature} ${data.data.script.outro}`
+            );
           }
         } catch (error) {
           console.error("Failed to fetch mock video data", error);
@@ -108,7 +143,27 @@ export default function ProjectDetailsPage({
     };
 
     fetchVideoData();
-  }, [statusData?.status, videoProps, projectData?.name]);
+  }, [statusData?.status, trailerData, projectData?.name]);
+
+  // --- 3. Terminal Theater Logic ---
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (statusData?.status === "processing") {
+      interval = setInterval(() => {
+        setCurrentLogIndex((prev) =>
+          prev < terminalLogs.length - 1 ? prev + 1 : prev
+        );
+      }, 1200); // Reveal a new log roughly every 1.2 seconds
+    }
+    return () => clearInterval(interval);
+  }, [statusData?.status, terminalLogs.length]);
+
+  // --- 4. Auto-Scroll Effect ---
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
+  }, [currentLogIndex]);
 
   const handleSaveScript = async () => {
     try {
@@ -210,7 +265,7 @@ export default function ProjectDetailsPage({
                     </div>
                   </div>
                 ) : (
-                  <VideoPlayer inputProps={videoProps || {}} />
+                  <VideoPlayer inputProps={trailerData || {}} />
                 )}
               </Card>
 
@@ -274,36 +329,64 @@ export default function ProjectDetailsPage({
             {/* Sidebar */}
             <div className="space-y-6">
               {/* Status */}
-              <Card className="p-6">
-                <h3 className="mb-4 font-bold">Processing Status</h3>
-                <div className="space-y-4">
+              {/* Status & Terminal Theater */}
+              <Card className="overflow-hidden border-white/10 bg-black/40 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] ring-1 ring-white/5 backdrop-blur-2xl">
+                <div className="flex items-center gap-2 border-b border-white/5 bg-white/5 p-4">
+                  <div className="flex gap-1.5">
+                    <div className="h-2.5 w-2.5 rounded-full bg-red-500/80"></div>
+                    <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/80"></div>
+                    <div className="h-2.5 w-2.5 rounded-full bg-green-500/80"></div>
+                  </div>
+                  <h3 className="text-muted-foreground ml-2 font-mono text-xs tracking-wider uppercase">
+                    System Log
+                  </h3>
+                </div>
+
+                <div className="space-y-6 p-6">
                   {statusData && (
-                    <>
-                      <div>
-                        <p className="text-muted-foreground mb-2 text-sm">
-                          Progress
+                    <div>
+                      <div className="mb-2 flex justify-between">
+                        <p className="font-mono text-xs tracking-widest text-cyan-400/80 uppercase">
+                          {statusData.current_stage}
                         </p>
-                        <div className="bg-secondary h-2 w-full rounded-full">
-                          <div
-                            className="bg-accent h-2 rounded-full transition-all"
-                            style={{ width: `${statusData.progress || 0}%` }}
-                          />
-                        </div>
-                        <p className="text-muted-foreground mt-1 text-xs">
+                        <p className="font-mono text-xs text-cyan-400/80">
                           {statusData.progress || 0}%
                         </p>
                       </div>
-
-                      <div>
-                        <p className="text-muted-foreground text-sm">
-                          Current Stage
-                        </p>
-                        <p className="mt-1 font-medium">
-                          {statusData.current_stage}
-                        </p>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full border border-white/5 bg-black/50">
+                        <div
+                          className="h-full bg-cyan-400/80 shadow-[0_0_10px_rgba(34,211,238,0.5)] transition-all duration-500 ease-out"
+                          style={{ width: `${statusData.progress || 0}%` }}
+                        />
                       </div>
-                    </>
+                    </div>
                   )}
+
+                  {/* The Glass Terminal */}
+                  <div
+                    ref={terminalRef}
+                    className="h-48 space-y-2 overflow-y-auto scroll-smooth pr-2 pb-2 font-mono text-[11px] text-cyan-300/70 sm:text-xs [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-transparent"
+                  >
+                    {terminalLogs
+                      .slice(0, currentLogIndex + 1)
+                      .map((log, i) => (
+                        <div
+                          key={i}
+                          className="animate-in fade-in slide-in-from-bottom-1 flex gap-3 opacity-90"
+                        >
+                          <span className="shrink-0 text-cyan-600/50">{`>`}</span>
+                          <span className="leading-relaxed">{log}</span>
+                        </div>
+                      ))}
+
+                    {/* Blinking Cursor */}
+                    {statusData?.status === "processing" && (
+                      <div className="mt-2 flex gap-3">
+                        <span className="shrink-0 text-cyan-600/50">{`>`}</span>
+                        <span className="inline-block h-3.5 w-2 animate-pulse rounded-sm bg-cyan-300/70"></span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </Card>
 

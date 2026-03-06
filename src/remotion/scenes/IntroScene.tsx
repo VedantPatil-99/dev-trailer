@@ -40,7 +40,7 @@ export const IntroScene = ({
           opacity,
           transform: `translateY(${translateY}px)`,
           color: "#ffffff", // Always crisp and readable
-          textShadow: `0 0 60px ${theme.primary}, 0 0 20px ${theme.primary}`, // Cinematic brand glow!
+          textShadow: `0 0 30px ${theme.primary}, 0 0 20px ${theme.primary}`, // Cinematic brand glow!
         }}
         className="text-center text-7xl leading-tight font-bold tracking-tighter"
       >
