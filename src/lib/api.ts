@@ -47,6 +47,21 @@ class APIClient {
     );
   }
 
+  // Add this helper method to create a fallback project if memory is wiped
+  private generateFallbackProject(projectId: string): Project {
+    return {
+      project_id: projectId,
+      name: "Restored Project (Dev Mode)",
+      status: "processing",
+      repo_url: "https://github.com/mock/restored",
+      description: "This project was restored after a dev-server refresh.",
+      duration: "60",
+      created_at: new Date().toISOString(),
+      video_url: null,
+      script: "Auto-generated script recovered from dev-refresh...",
+    };
+  }
+
   // Health check
   async health() {
     return this.client.get("/health");
@@ -96,26 +111,39 @@ class APIClient {
 
   async getProject(projectId: string) {
     if (this.mockMode) {
-      const project = mockProjects[projectId];
-      if (!project) return Promise.reject(new Error("Project not found"));
+      let project = mockProjects[projectId];
+      // FIX: Recover instead of rejecting
+      if (!project) {
+        project = this.generateFallbackProject(projectId);
+        mockProjects[projectId] = project; // Save it back to memory
+      }
       return Promise.resolve({ data: project });
     }
+
     try {
       return await this.client.get(`/projects/${projectId}`);
     } catch {
       this.mockMode = true;
-      const project = mockProjects[projectId];
-      if (!project) return Promise.reject(new Error("Project not found"));
+      let project = mockProjects[projectId];
+      // FIX: Recover instead of rejecting
+      if (!project) {
+        project = this.generateFallbackProject(projectId);
+        mockProjects[projectId] = project;
+      }
       return Promise.resolve({ data: project });
     }
   }
 
   async getProjectStatus(projectId: string) {
     if (this.mockMode) {
-      const project = mockProjects[projectId];
-      if (!project) return Promise.reject(new Error("Project not found"));
+      let project = mockProjects[projectId];
+      // FIX: Recover instead of rejecting
+      if (!project) {
+        project = this.generateFallbackProject(projectId);
+        mockProjects[projectId] = project;
+      }
 
-      // Simulate progress
+      // Simulate progress (Keep your existing math here)
       const elapsed = Date.now() - new Date(project.created_at).getTime();
       const progress = Math.min(100, Math.floor((elapsed / 15000) * 100));
       const stages = [
@@ -136,12 +164,18 @@ class APIClient {
         },
       });
     }
+
     try {
       return await this.client.get(`/projects/${projectId}/status`);
     } catch {
       this.mockMode = true;
-      const project = mockProjects[projectId];
-      if (!project) return Promise.reject(new Error("Project not found"));
+      // Also recover in the catch block just in case
+      let project = mockProjects[projectId];
+      if (!project) {
+        project = this.generateFallbackProject(projectId);
+        mockProjects[projectId] = project;
+      }
+
       return Promise.resolve({
         data: {
           project_id: projectId,
