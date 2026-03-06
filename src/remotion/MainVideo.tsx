@@ -1,65 +1,54 @@
+import React from "react";
+
 import { springTiming, TransitionSeries } from "@remotion/transitions";
-import { slide } from "@remotion/transitions/slide";
+import { fade } from "@remotion/transitions/fade";
 import { AbsoluteFill } from "remotion";
 
-import { IntroScene } from "./scenes/IntroScene";
 import { ShowcaseScene } from "./scenes/ShowcaseScene";
 
-// 1. Use the official Phase 3 Contract
 interface TrailerData {
   projectName?: string;
   primaryColor?: string;
-  script?: { intro: string; feature: string; outro: string };
-  assets?: {
-    screenshotUrl: string;
+  assets?: { screenshotUrl: string };
+  scenes?: Array<{
+    script: string;
     boundingBox: { x: number; y: number; width: number; height: number };
-  };
+  }>;
 }
 
 export const MainVideo = (props: TrailerData) => {
-  // 2. Map the strictly typed props
   const screenshot = props.assets?.screenshotUrl || "";
-  const boundingBox = props.assets?.boundingBox || {
-    x: 0,
-    y: 0,
-    width: 1920,
-    height: 1080,
-  };
+  const scenes = props.scenes || [];
   const primaryColor = props.primaryColor || "#10b981";
-  const introScript = props.script?.intro || "Introducing our latest project.";
 
   return (
     <AbsoluteFill className="flex items-center justify-center bg-neutral-950">
-      {screenshot ? (
+      {screenshot && scenes.length > 0 ? (
         <TransitionSeries>
-          <TransitionSeries.Sequence durationInFrames={90}>
-            {/* Pass the updated props down to your scenes */}
-            <IntroScene
-              script={introScript}
-              theme={{ primary: primaryColor, background: "#0a0a0a" }}
-            />
-          </TransitionSeries.Sequence>
+          {scenes.map((scene, index) => (
+            <React.Fragment key={index}>
+              {/* Each scene plays for 6 seconds (180 frames) */}
+              <TransitionSeries.Sequence durationInFrames={180}>
+                <ShowcaseScene
+                  screenshot={screenshot}
+                  boundingBox={scene.boundingBox}
+                  script={scene.script}
+                  primaryColor={primaryColor}
+                />
+              </TransitionSeries.Sequence>
 
-          <TransitionSeries.Transition
-            presentation={slide({ direction: "from-right" })}
-            timing={springTiming({
-              config: { damping: 200 },
-              durationInFrames: 30,
-            })}
-          />
-
-          <TransitionSeries.Sequence durationInFrames={180}>
-            {/* Notice we are now passing boundingBox instead of focusPoint array */}
-            <ShowcaseScene
-              screenshot={screenshot}
-              focusPoint={[
-                boundingBox.y,
-                boundingBox.x,
-                boundingBox.y + boundingBox.height,
-                boundingBox.x + boundingBox.width,
-              ]}
-            />
-          </TransitionSeries.Sequence>
+              {/* Slow, elegant 1.5-second fade between components */}
+              {index < scenes.length - 1 && (
+                <TransitionSeries.Transition
+                  presentation={fade()}
+                  timing={springTiming({
+                    config: { damping: 200 },
+                    durationInFrames: 45,
+                  })}
+                />
+              )}
+            </React.Fragment>
+          ))}
         </TransitionSeries>
       ) : (
         <h1 className="text-5xl font-bold tracking-tight text-emerald-400">

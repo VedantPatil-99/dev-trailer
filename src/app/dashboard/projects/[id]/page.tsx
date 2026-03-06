@@ -18,18 +18,16 @@ import { apiClient } from "@/lib/api";
 import { Project } from "@/lib/api";
 
 export interface TrailerData {
-  [key: string]: unknown; // <-- ADD THIS LINE to satisfy VideoPlayerProps!
+  [key: string]: unknown;
   projectName: string;
   primaryColor: string;
-  script: {
-    intro: string;
-    feature: string;
-    outro: string;
-  };
   assets: {
     screenshotUrl: string;
-    boundingBox: { x: number; y: number; width: number; height: number };
   };
+  scenes: Array<{
+    script: string;
+    boundingBox: { x: number; y: number; width: number; height: number };
+  }>;
 }
 
 interface ProjectStatus {
@@ -133,7 +131,9 @@ export default function ProjectDetailsPage({
             setTrailerData(data.data);
             // Combine the script object into a readable string for the editor
             setScript(
-              `${data.data.script.intro} ${data.data.script.feature} ${data.data.script.outro}`
+              data.data.scenes
+                .map((s: { script: string }) => s.script)
+                .join(" ")
             );
           }
         } catch (error) {

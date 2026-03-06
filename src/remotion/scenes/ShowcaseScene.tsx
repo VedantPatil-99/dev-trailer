@@ -7,50 +7,63 @@ import {
   useVideoConfig,
 } from "remotion";
 
+import { TextGenerateEffect } from "../components/TextGenerateEffect";
+
 export const ShowcaseScene = ({
   screenshot,
-  focusPoint,
+  boundingBox,
+  script,
+  primaryColor,
 }: {
   screenshot: string;
-  focusPoint: number[];
+  boundingBox: { x: number; y: number; width: number; height: number };
+  script: string;
+  primaryColor: string;
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // 1. Calculate the center of the AI's bounding box to zoom into
-  const [ymin, xmin, ymax, xmax] = focusPoint || [0, 0, 1080, 1920];
-  const targetX = xmin + (xmax - xmin) / 2;
-  const targetY = ymin + (ymax - ymin) / 2;
+  // Target center of the UI component
+  const targetX = boundingBox.x + boundingBox.width / 2;
+  const targetY = boundingBox.y + boundingBox.height / 2;
 
-  // 2. Setup the physics spring for a smooth, cinematic ease-in
+  // SLOW, cinematic ease-in (duration: 6 seconds)
   const animationProgress = spring({
     frame,
     fps,
-    config: { damping: 200, stiffness: 20 }, // High damping to avoid cartoon-like bouncing
-    durationInFrames: 120, // 4 seconds
+    config: { damping: 200, stiffness: 10 }, // Very low stiffness for slow movement
+    durationInFrames: 180,
   });
 
-  // 3. Interpolate the spring value (0 to 1) into actual CSS transforms
-  const scale = interpolate(animationProgress, [0, 1], [1, 1.8]);
-  const rotateX = interpolate(animationProgress, [0, 1], [30, 0]); // Tilt flat
-  const rotateY = interpolate(animationProgress, [0, 1], [-20, 0]); // Pan right
+  // Deep zoom and pan
+  const scale = interpolate(animationProgress, [0, 1], [1, 2.2]);
+  const rotateX = interpolate(animationProgress, [0, 1], [25, 0]);
 
   return (
-    <AbsoluteFill className="flex items-center justify-center bg-neutral-900 perspective-[2000px]">
+    <AbsoluteFill className="flex items-center justify-center bg-neutral-900 perspective-[2500px]">
       <AbsoluteFill
         style={{
-          transform: `scale(${scale}) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
-          transformOrigin: `${targetX}px ${targetY}px`, // Zoom directly to what the AI found!
+          transform: `scale(${scale}) rotateX(${rotateX}deg)`,
+          transformOrigin: `${targetX}px ${targetY}px`,
           transformStyle: "preserve-3d",
         }}
         className="flex items-center justify-center shadow-2xl shadow-black/50"
       >
-        {screenshot && (
-          <Img
-            src={screenshot}
-            className="h-[1080px] w-[1920px] rounded-xl border border-white/10 object-cover"
+        <Img src={screenshot} className="w-480 object-cover opacity-80" />
+      </AbsoluteFill>
+
+      {/* The Cinematic Text Overlay */}
+      <AbsoluteFill className="justify-end bg-linear-to-t from-black/90 via-black/40 to-transparent p-24">
+        <div className="max-w-4xl">
+          <TextGenerateEffect
+            words={script}
+            className="text-5xl leading-tight tracking-tight text-white drop-shadow-2xl"
           />
-        )}
+          <div
+            className="mt-8 h-1 w-24 rounded-full shadow-[0_0_20px_rgba(255,255,255,0.5)]"
+            style={{ backgroundColor: primaryColor }}
+          />
+        </div>
       </AbsoluteFill>
     </AbsoluteFill>
   );

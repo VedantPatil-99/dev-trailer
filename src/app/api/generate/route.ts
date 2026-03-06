@@ -7,102 +7,100 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export const POST = async (request: Request) => {
   try {
-    const body = await request.json();
-    const { projectName, repoUrl, liveUrl } = body;
+    const { projectName, repoUrl, liveUrl } = await request.json();
 
-    if (!liveUrl) {
+    if (!liveUrl)
       return NextResponse.json(
-        { success: false, error: "Live URL is required for AI generation" },
+        { success: false, error: "Live URL required" },
         { status: 400 }
       );
-    }
 
-    // 1. Playwright: The Virtual Cinematographer
+    // 1. Playwright: The UPGRADED Virtual Cinematographer
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({
       viewport: { width: 1920, height: 1080 },
-      deviceScaleFactor: 1,
-      colorScheme: "dark", // <-- THIS TELLS THE WEBSITE TO USE DARK MODE
+      deviceScaleFactor: 2, // <-- FIX: Doubles the resolution to 4K quality!
+      colorScheme: "dark",
     });
 
     const page = await context.newPage();
-
-    // Wait until network is idle to ensure React/Vue apps are fully rendered
     await page.goto(liveUrl, { waitUntil: "networkidle" });
 
-    // Capture screenshot and convert directly to Base64 to skip S3 uploads
-    const screenshotBuffer = await page.screenshot({ fullPage: false });
+    // Get the exact height of the scrolling page to do math later
+    const pageHeight = await page.evaluate(
+      () => document.documentElement.scrollHeight
+    );
+
+    // Capture the entire scrolling page, not just the top!
+    const screenshotBuffer = await page.screenshot({ fullPage: true });
     await browser.close();
 
     const base64Image = screenshotBuffer.toString("base64");
 
-    // 2. Gemini 2.5 Flash: The AI Director
+    // 2. Gemini 2.5 Flash: The Multi-Scene Director
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
-      You are a marketing expert and UI analyst. I am providing a screenshot of a web application named "${projectName}" (Repo: ${repoUrl}).
-      Analyze the visual layout and return a strictly formatted JSON object matching this exact structure:
+      You are a cinematic Video Director analyzing a high-resolution, full-page website screenshot for "${projectName}".
+      Identify 3 distinct, visually interesting UI components (e.g., Hero Section, Feature Cards, Code Blocks, Pricing, or Footer).
+      
+      Return a strictly formatted JSON object matching this structure:
       {
-        "script": {
-          "intro": "1 punchy sentence introducing the app.",
-          "feature": "1 sentence highlighting the main UI feature seen in the screenshot.",
-          "outro": "1 short call to action sentence."
-        },
-        "primaryColor": "A vibrant, light hex color code from the brand that contrasts well against a black background.",
-        "boundingBox": {
-          "x": number, // X-coordinate of the most interesting UI element (0-1000 scale)
-          "y": number, // Y-coordinate (0-1000 scale)
-          "width": number, // Width of the element (0-1000 scale)
-          "height": number // Height of the element (0-1000 scale)
-        }
+        "primaryColor": "A bright hex color found in the UI that contrasts against black.",
+        "scenes": [
+          {
+            "script": "1 short, punchy sentence explaining this specific component.",
+            "boundingBox": { "x": number, "y": number, "width": number, "height": number } // Scaled 0-1000
+          },
+          // MUST return exactly 3 scenes
+        ]
       }
-      Return ONLY the raw JSON object, without any markdown formatting.
+      Return ONLY raw JSON.
     `;
 
     const imagePart = {
       inlineData: { data: base64Image, mimeType: "image/png" },
     };
-
     const result = await model.generateContent([prompt, imagePart]);
-    const responseText = result.response.text();
-
-    const cleanJsonString = responseText
+    const cleanJsonString = result.response
+      .text()
       .replace(/```json/g, "")
       .replace(/```/g, "")
       .trim();
     const aiData = JSON.parse(cleanJsonString);
 
-    // 3. Coordinate Math (Descaling from 1000x1000 back to 1920x1080)
-    const { x, y, width, height } = aiData.boundingBox;
-    const actual_x = (x / 1000) * 1920;
-    const actual_y = (y / 1000) * 1080;
-    const actual_w = (width / 1000) * 1920;
-    const actual_h = (height / 1000) * 1080;
+    // 3. Math: Descale coordinates for the FULL page height
+    const mappedScenes = aiData.scenes.map(
+      (scene: {
+        script: string;
+        boundingBox: { x: number; y: number; width: number; height: number };
+      }) => ({
+        script: scene.script,
+        boundingBox: {
+          x: (scene.boundingBox.x / 1000) * 1920,
+          y: (scene.boundingBox.y / 1000) * pageHeight, // Use actual page height!
+          width: (scene.boundingBox.width / 1000) * 1920,
+          height: (scene.boundingBox.height / 1000) * pageHeight,
+        },
+      })
+    );
 
-    // 4. Construct Final Payload matching the TrailerData Contract
+    // 4. Return new TrailerData structure
     const payload = {
       success: true,
       data: {
-        projectName: projectName || "DevTrailer AI Generation",
+        projectName: projectName,
         primaryColor: aiData.primaryColor,
-        script: aiData.script,
-        assets: {
-          screenshotUrl: `data:image/png;base64,${base64Image}`,
-          boundingBox: {
-            x: actual_x,
-            y: actual_y,
-            width: actual_w,
-            height: actual_h,
-          },
-        },
+        assets: { screenshotUrl: `data:image/png;base64,${base64Image}` },
+        scenes: mappedScenes,
       },
     };
 
     return NextResponse.json(payload, { status: 200 });
   } catch (error) {
-    console.error("Phase 2 AI Generation Error:", error);
+    console.error("AI Generation Error:", error);
     return NextResponse.json(
-      { success: false, error: "AI Generation failed. Check server logs." },
+      { success: false, error: "Generation failed" },
       { status: 500 }
     );
   }
