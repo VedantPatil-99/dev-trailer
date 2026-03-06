@@ -55,6 +55,7 @@ class APIClient {
       name: "Restored Project (Dev Mode)",
       status: "processing",
       repo_url: "https://github.com/mock/restored",
+      live_url: "https://vercel.com",
       description: "This project was restored after a dev-server refresh.",
       duration: "60",
       created_at: new Date().toISOString(),
