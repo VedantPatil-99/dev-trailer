@@ -12,6 +12,13 @@ export const RemotionRoot = () => {
         fps={30}
         width={1920}
         height={1080}
+        defaultProps={{
+          // Define the default empty state
+          assets: [],
+          focusPoint: [0, 0, 1080, 1920],
+          theme: { primary: "#10b981", background: "#0a0a0a" },
+          script: "",
+        }}
       />
     </>
   );
