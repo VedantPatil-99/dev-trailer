@@ -91,6 +91,8 @@ export default function ProjectDetailsPage({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               projectName: projectData?.name || "Mock Project",
+              repoUrl: projectData?.repo_url || "", // <-- ADDED THIS
+              liveUrl: projectData?.live_url || "", // <-- ADDED THIS
             }),
           });
           const data = await res.json();
