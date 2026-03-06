@@ -5,29 +5,41 @@ import { AbsoluteFill } from "remotion";
 import { IntroScene } from "./scenes/IntroScene";
 import { ShowcaseScene } from "./scenes/ShowcaseScene";
 
-type VideoProps = {
-  assets?: string[];
-  focusPoint?: number[];
-  theme?: { primary: string; background: string };
-  script?: string;
-};
+// 1. Use the official Phase 3 Contract
+interface TrailerData {
+  projectName?: string;
+  primaryColor?: string;
+  script?: { intro: string; feature: string; outro: string };
+  assets?: {
+    screenshotUrl: string;
+    boundingBox: { x: number; y: number; width: number; height: number };
+  };
+}
 
-export const MainVideo = (props: VideoProps) => {
-  const screenshot = props.assets?.[0] || "";
-  const focusPoint = props.focusPoint || [0, 0, 1080, 1920];
-  const theme = props.theme || { primary: "#10b981", background: "#0a0a0a" };
-  const script = props.script || "";
+export const MainVideo = (props: TrailerData) => {
+  // 2. Map the strictly typed props
+  const screenshot = props.assets?.screenshotUrl || "";
+  const boundingBox = props.assets?.boundingBox || {
+    x: 0,
+    y: 0,
+    width: 1920,
+    height: 1080,
+  };
+  const primaryColor = props.primaryColor || "#10b981";
+  const introScript = props.script?.intro || "Introducing our latest project.";
 
   return (
     <AbsoluteFill className="flex items-center justify-center bg-neutral-950">
       {screenshot ? (
         <TransitionSeries>
-          {/* 1. The Intro Scene (plays for 90 frames / 3 seconds) */}
           <TransitionSeries.Sequence durationInFrames={90}>
-            <IntroScene script={script} theme={theme} />
+            {/* Pass the updated props down to your scenes */}
+            <IntroScene
+              script={introScript}
+              theme={{ primary: primaryColor, background: "#0a0a0a" }}
+            />
           </TransitionSeries.Sequence>
 
-          {/* 2. The Cinematic Cut */}
           <TransitionSeries.Transition
             presentation={slide({ direction: "from-right" })}
             timing={springTiming({
@@ -36,9 +48,17 @@ export const MainVideo = (props: VideoProps) => {
             })}
           />
 
-          {/* 3. The 3D Showcase Scene (plays for the remaining time) */}
           <TransitionSeries.Sequence durationInFrames={180}>
-            <ShowcaseScene screenshot={screenshot} focusPoint={focusPoint} />
+            {/* Notice we are now passing boundingBox instead of focusPoint array */}
+            <ShowcaseScene
+              screenshot={screenshot}
+              focusPoint={[
+                boundingBox.y,
+                boundingBox.x,
+                boundingBox.y + boundingBox.height,
+                boundingBox.x + boundingBox.width,
+              ]}
+            />
           </TransitionSeries.Sequence>
         </TransitionSeries>
       ) : (
