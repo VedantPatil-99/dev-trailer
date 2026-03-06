@@ -1,8 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Dark Mode - Apple Vision Pro meets Cyberpunk */
+  --background: #0a0a0a;
+  --foreground: #f5f5f5;
+  
+  /* Accent colors - Emerald and Cyan for glowing effects */
+  --accent-emerald: #10b981;
+  --accent-cyan: #06b6d4;
+  --accent-purple: #8b5cf6;
+  
+  /* Neutral grays */
+  --neutral-900: #0f0f0f;
+  --neutral-800: #1a1a1a;
+  --neutral-700: #2d2d2d;
+  --neutral-600: #404040;
 }
 
 @theme inline {
@@ -10,17 +22,29 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  
+  /* Custom glow colors */
+  --color-glow-emerald: rgb(16 185 153 / 0.5);
+  --color-glow-cyan: rgb(6 182 212 / 0.5);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Base styles */
+* {
+  @apply antialiased;
 }
 
 body {
-  background: var(--background);
+  background: linear-gradient(135deg, #0a0a0a 0%, #0f1419 100%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Remove default Next.js body margin */
+html, body {
+  margin: 0;
+  padding: 0;
 }
