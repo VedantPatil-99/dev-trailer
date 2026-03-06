@@ -9,6 +9,7 @@ export interface Project {
   name: string;
   status: "processing" | "completed" | "failed";
   repo_url: string;
+  live_url?: string; // <-- Add this line
   description: string;
   duration: string;
   created_at: string;
@@ -71,6 +72,7 @@ class APIClient {
   async createProject(data: {
     project_name: string;
     repo_url: string;
+    live_url?: string; // <-- Add this line
     description?: string;
     video_duration?: string;
   }) {
@@ -86,20 +88,20 @@ class APIClient {
       return this.mockCreateProject(data);
     }
   }
-
   private mockCreateProject(data: {
     project_name: string;
     repo_url: string;
+    live_url?: string; // <-- Add this line
     description?: string;
     video_duration?: string;
   }) {
     const projectId = `proj_${projectCounter++}`;
     const project: Project = {
-      // Explicitly type as Project
       project_id: projectId,
       name: data.project_name,
       status: "processing",
       repo_url: data.repo_url,
+      live_url: data.live_url, // <-- Add this line
       description: data.description || "",
       duration: data.video_duration || "60",
       created_at: new Date().toISOString(),

@@ -45,6 +45,7 @@ export function useProjects() {
     async (data: {
       project_name: string;
       repo_url: string;
+      live_url?: string; // <-- Add this line
       description?: string;
       video_duration?: string;
     }) => {
