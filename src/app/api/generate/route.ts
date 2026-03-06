@@ -41,54 +41,60 @@ export const POST = async (request: Request) => {
 
     const prompt = `
       You are a marketing expert and UI analyst. I am providing a screenshot of a web application named "${projectName}" (Repo: ${repoUrl}).
-      Analyze the visual layout and return a strictly formatted JSON object with the following:
-      1. "script": A punchy, 3-sentence promotional script based on the visual context and project name.
-      2. "theme": The primary brand hex color found in the screenshot.
-      (Note: 2. "theme": A vibrant, light primary brand hex color found in the screenshot. It MUST contrast well and be highly visible against a pure black background. If the brand's primary color is black or dark grey, you MUST return a bright complementary accent color or white ("#ffffff") instead.)
-      3. "boundingBox": Identify the most visually interesting UI component (like a pricing card, hero section, or main dashboard element) and return its bounding box coordinates as an array [ymin, xmin, ymax, xmax]. These coordinates MUST be scaled and normalized to a 0-1000 range.
-      
-      Return ONLY the raw JSON object, without any markdown formatting or backticks.
+      Analyze the visual layout and return a strictly formatted JSON object matching this exact structure:
+      {
+        "script": {
+          "intro": "1 punchy sentence introducing the app.",
+          "feature": "1 sentence highlighting the main UI feature seen in the screenshot.",
+          "outro": "1 short call to action sentence."
+        },
+        "primaryColor": "A vibrant, light hex color code from the brand that contrasts well against a black background.",
+        "boundingBox": {
+          "x": number, // X-coordinate of the most interesting UI element (0-1000 scale)
+          "y": number, // Y-coordinate (0-1000 scale)
+          "width": number, // Width of the element (0-1000 scale)
+          "height": number // Height of the element (0-1000 scale)
+        }
+      }
+      Return ONLY the raw JSON object, without any markdown formatting.
     `;
 
     const imagePart = {
-      inlineData: {
-        data: base64Image,
-        mimeType: "image/png",
-      },
+      inlineData: { data: base64Image, mimeType: "image/png" },
     };
 
     const result = await model.generateContent([prompt, imagePart]);
     const responseText = result.response.text();
 
-    // Clean up potential markdown formatting from the AI response
     const cleanJsonString = responseText
       .replace(/```json/g, "")
       .replace(/```/g, "")
       .trim();
     const aiData = JSON.parse(cleanJsonString);
 
-    // 3. Coordinate Math
-    // Descale from Gemini's 1000x1000 normalization back to our 1920x1080 viewport
-    const [ymin, xmin, ymax, xmax] = aiData.boundingBox;
-    const actual_xmin = (xmin / 1000) * 1920;
-    const actual_xmax = (xmax / 1000) * 1920;
-    const actual_ymin = (ymin / 1000) * 1080;
-    const actual_ymax = (ymax / 1000) * 1080;
+    // 3. Coordinate Math (Descaling from 1000x1000 back to 1920x1080)
+    const { x, y, width, height } = aiData.boundingBox;
+    const actual_x = (x / 1000) * 1920;
+    const actual_y = (y / 1000) * 1080;
+    const actual_w = (width / 1000) * 1920;
+    const actual_h = (height / 1000) * 1080;
 
-    // 4. Construct Final Payload
+    // 4. Construct Final Payload matching the TrailerData Contract
     const payload = {
       success: true,
       data: {
         projectName: projectName || "DevTrailer AI Generation",
+        primaryColor: aiData.primaryColor,
         script: aiData.script,
-        theme: {
-          primary: aiData.theme,
-          background: "#0a0a0a",
+        assets: {
+          screenshotUrl: `data:image/png;base64,${base64Image}`,
+          boundingBox: {
+            x: actual_x,
+            y: actual_y,
+            width: actual_w,
+            height: actual_h,
+          },
         },
-        assets: [
-          `data:image/png;base64,${base64Image}`, // Pass the actual screenshot to Remotion!
-        ],
-        focusPoint: [actual_ymin, actual_xmin, actual_ymax, actual_xmax],
       },
     };
 
