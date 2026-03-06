@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 
 import Link from "next/link";
 
 import { ArrowLeft, Download, Edit2, Loader2, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
+// <-- Add this import
 import Sidebar from "@/components/dashboard/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { useProjects } from "@/hooks/useProjects";
 import { apiClient } from "@/lib/api";
 import { Project } from "@/lib/api";
@@ -22,12 +24,17 @@ interface ProjectStatus {
 }
 
 interface ProjectDetailsPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>; // <-- Wrap the object in a Promise
 }
 
 export default function ProjectDetailsPage({
   params,
 }: ProjectDetailsPageProps) {
+  const resolvedParams = use(params);
+  const projectId = resolvedParams.id;
+  const [videoProps, setVideoProps] = useState<Record<string, unknown> | null>(
+    null
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [script, setScript] = useState("");
   const [projectData, setProjectData] = useState<Project | null>(null);
@@ -35,9 +42,8 @@ export default function ProjectDetailsPage({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const projectId = params.id;
   const { updateProjectScript } = useProjects();
-
+  // --- 1. First useEffect: Fetches project and polls status ---
   useEffect(() => {
     const fetchProject = async () => {
       try {
@@ -74,6 +80,33 @@ export default function ProjectDetailsPage({
 
     return () => clearInterval(interval);
   }, [projectId]);
+
+  // --- 2. Second useEffect: Fetches mock video data when complete ---
+  useEffect(() => {
+    const fetchVideoData = async () => {
+      if (statusData?.status === "completed" && !videoProps) {
+        try {
+          const res = await fetch("/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              projectName: projectData?.name || "Mock Project",
+            }),
+          });
+          const data = await res.json();
+
+          if (data.success) {
+            setVideoProps(data.data);
+            setScript(data.data.script); // Auto-fills the Script Editor UI
+          }
+        } catch (error) {
+          console.error("Failed to fetch mock video data", error);
+        }
+      }
+    };
+
+    fetchVideoData();
+  }, [statusData?.status, videoProps, projectData?.name]);
 
   const handleSaveScript = async () => {
     try {
@@ -165,18 +198,18 @@ export default function ProjectDetailsPage({
               {/* Video Player */}
               <Card className="p-6">
                 <h2 className="mb-4 text-xl font-bold">Video Preview</h2>
-                <div className="bg-secondary flex aspect-video items-center justify-center rounded-lg">
-                  {statusData?.status === "processing" ? (
+                {statusData?.status === "processing" ? (
+                  <div className="bg-secondary flex aspect-video items-center justify-center rounded-lg">
                     <div className="text-center">
                       <Loader2 className="text-accent mx-auto mb-4 h-12 w-12 animate-spin" />
                       <p className="text-muted-foreground">
                         Rendering video...
                       </p>
                     </div>
-                  ) : (
-                    <div className="text-6xl">🎬</div>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <VideoPlayer inputProps={videoProps || {}} />
+                )}
               </Card>
 
               {/* Script Editor */}

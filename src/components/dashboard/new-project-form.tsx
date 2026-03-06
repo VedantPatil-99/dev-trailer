@@ -29,6 +29,11 @@ const projectSchema = z.object({
       (val) => val.includes("github.com"),
       "Must be a valid GitHub URL (github.com)"
     ),
+  liveUrl: z
+    .string()
+    .url("Must be a valid URL (e.g., https://myapp.com)")
+    .or(z.literal(""))
+    .optional(), // <-- Add this line
   description: z
     .string()
     .max(500, "Description must be under 500 characters")
@@ -62,6 +67,7 @@ export default function NewProjectForm({
     defaultValues: {
       projectName: "",
       repoUrl: "",
+      liveUrl: "",
       description: "",
       videoDuration: "60",
     },
@@ -133,6 +139,23 @@ export default function NewProjectForm({
             {errors.repoUrl && (
               <p className="text-destructive text-xs">
                 {errors.repoUrl.message}
+              </p>
+            )}
+          </div>
+
+          {/* Live URL */}
+          <div className="space-y-2">
+            <Label htmlFor="liveUrl">Live Website URL (Optional)</Label>
+            <Input
+              id="liveUrl"
+              placeholder="https://your-deployed-app.com"
+              disabled={isSubmitting}
+              {...register("liveUrl")}
+              className="bg-input"
+            />
+            {errors.liveUrl && (
+              <p className="text-destructive text-xs">
+                {errors.liveUrl.message}
               </p>
             )}
           </div>

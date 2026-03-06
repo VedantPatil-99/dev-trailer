@@ -15,6 +15,7 @@ import { useProjects } from "@/hooks/useProjects";
 interface NewProjectData {
   projectName: string;
   repoUrl: string;
+  liveUrl?: string;
   description?: string;
   videoDuration: string;
 }
@@ -33,6 +34,7 @@ export default function Dashboard() {
       const result = await createProject({
         project_name: data.projectName,
         repo_url: data.repoUrl,
+        live_url: data.liveUrl, // <-- Add this line
         description: data.description,
         video_duration: data.videoDuration,
       });
