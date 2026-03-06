@@ -18,6 +18,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@phosphor-icons/react": "^2.1.10",
     "@remotion/player": "^4.0.434",
+    "@remotion/transitions": "^4.0.434",
     "axios": "^1.13.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
