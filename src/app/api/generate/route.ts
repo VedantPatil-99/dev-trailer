@@ -22,6 +22,7 @@ export const POST = async (request: Request) => {
     const context = await browser.newContext({
       viewport: { width: 1920, height: 1080 },
       deviceScaleFactor: 1,
+      colorScheme: "dark", // <-- THIS TELLS THE WEBSITE TO USE DARK MODE
     });
 
     const page = await context.newPage();
@@ -43,6 +44,7 @@ export const POST = async (request: Request) => {
       Analyze the visual layout and return a strictly formatted JSON object with the following:
       1. "script": A punchy, 3-sentence promotional script based on the visual context and project name.
       2. "theme": The primary brand hex color found in the screenshot.
+      (Note: 2. "theme": A vibrant, light primary brand hex color found in the screenshot. It MUST contrast well and be highly visible against a pure black background. If the brand's primary color is black or dark grey, you MUST return a bright complementary accent color or white ("#ffffff") instead.)
       3. "boundingBox": Identify the most visually interesting UI component (like a pricing card, hero section, or main dashboard element) and return its bounding box coordinates as an array [ymin, xmin, ymax, xmax]. These coordinates MUST be scaled and normalized to a 0-1000 range.
       
       Return ONLY the raw JSON object, without any markdown formatting or backticks.
