@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 // <-- Add this import
 import Sidebar from "@/components/dashboard/sidebar";
+import { SocialPostsCard } from "@/components/dashboard/social-posts-card";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -326,6 +327,16 @@ export default function ProjectDetailsPage({
                   </div>
                 )}
               </Card>
+
+              {/* Social captions — shown when video is ready */}
+              {trailerData && (
+                <SocialPostsCard
+                  projectName={projectData?.name ?? ""}
+                  repoUrl={projectData?.repo_url ?? ""}
+                  liveUrl={projectData?.live_url ?? ""}
+                  script={script}
+                />
+              )}
             </div>
 
             {/* Sidebar */}
