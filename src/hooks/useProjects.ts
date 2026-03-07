@@ -10,7 +10,7 @@ export interface Project {
   status: "processing" | "completed" | "failed";
   repo_url: string;
   created_at: string;
-  video_url?: string;
+  video_url: string | null;
 }
 
 interface ProjectStatus {
