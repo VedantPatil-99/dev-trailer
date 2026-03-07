@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { ThemeProvider } from "next-themes";
 import { Geist, Geist_Mono } from "next/font/google";
 
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
@@ -57,17 +55,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
       >
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-          <ThemeToggle />
+        {children}
 
-          {children}
-
-          <Toaster richColors position="bottom-right" />
-        </ThemeProvider>
+        <Toaster richColors position="bottom-right" />
       </body>
     </html>
   );
