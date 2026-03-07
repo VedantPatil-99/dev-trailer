@@ -5,7 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { Zap } from "lucide-react";
+import { Chrome, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,28 @@ export default function LoginPage() {
       router.refresh();
     } catch {
       toast.error("Sign in failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+      }
+    } catch {
+      toast.error("Google sign in failed");
     } finally {
       setIsLoading(false);
     }
@@ -118,6 +140,19 @@ export default function LoginPage() {
               <span className="bg-card text-muted-foreground px-2">or</span>
             </div>
           </div>
+
+          {isSupabaseConfigured && (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+              type="button"
+            >
+              <Chrome className="mr-2 h-4 w-4" />
+              Continue with Google
+            </Button>
+          )}
 
           <Button
             variant="outline"
