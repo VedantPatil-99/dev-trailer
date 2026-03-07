@@ -6,10 +6,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Zap } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase/client";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -21,19 +24,36 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
-    // Simulate signup (in production, call API)
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // Redirect to dashboard
-    router.push("/dashboard");
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: name } },
+        });
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+        toast.success("Check your email to confirm your account");
+      }
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      toast.error("Sign up failed");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="bg-background flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
-        <Link href="/" className="mb-8 flex items-center gap-2">
+        <Link
+          href="/"
+          className="mb-8 flex items-center gap-2"
+          aria-label="DevTrailer home"
+        >
           <Zap className="text-accent h-8 w-8" />
           <span className="text-2xl font-bold">DevTrailer</span>
         </Link>
@@ -45,36 +65,45 @@ export default function SignupPage() {
           </p>
 
           <form onSubmit={handleSignup} className="space-y-4">
-            <div>
-              <label className="mb-2 block text-sm font-medium">Name</label>
+            <div className="space-y-2">
+              <Label htmlFor="signup-name">Name</Label>
               <Input
+                id="signup-name"
                 type="text"
                 placeholder="Your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
+                disabled={isLoading}
+                autoComplete="name"
               />
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium">Email</label>
+            <div className="space-y-2">
+              <Label htmlFor="signup-email">Email</Label>
               <Input
+                id="signup-email"
                 type="email"
                 placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={isLoading}
+                autoComplete="email"
               />
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium">Password</label>
+            <div className="space-y-2">
+              <Label htmlFor="signup-password">Password</Label>
               <Input
+                id="signup-password"
                 type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={isLoading}
+                autoComplete="new-password"
               />
             </div>
 
@@ -86,6 +115,13 @@ export default function SignupPage() {
               {isLoading ? "Creating account..." : "Sign Up"}
             </Button>
           </form>
+
+          {!isSupabaseConfigured && (
+            <p className="text-muted-foreground mt-3 text-center text-xs">
+              Add Supabase env vars to enable real sign-up. You&apos;ll be taken
+              to the dashboard.
+            </p>
+          )}
 
           <p className="text-muted-foreground mt-6 text-center text-sm">
             Already have an account?{" "}

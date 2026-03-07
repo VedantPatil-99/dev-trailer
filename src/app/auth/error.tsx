@@ -1,0 +1,41 @@
+"use client";
+
+import { useEffect } from "react";
+
+import Link from "next/link";
+
+import { AlertCircle } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+
+export default function AuthError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    console.error("Auth error:", error);
+  }, [error]);
+
+  return (
+    <div className="bg-background flex min-h-screen flex-col items-center justify-center gap-6 p-6">
+      <div className="text-destructive flex items-center gap-3">
+        <AlertCircle className="h-10 w-10" aria-hidden />
+        <h1 className="text-xl font-bold">Authentication error</h1>
+      </div>
+      <p className="text-muted-foreground max-w-md text-center text-sm">
+        Something went wrong. You can try again or return to the home page.
+      </p>
+      <div className="flex gap-3">
+        <Button onClick={reset} variant="outline" aria-label="Try again">
+          Try again
+        </Button>
+        <Button asChild>
+          <Link href="/">Go home</Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
