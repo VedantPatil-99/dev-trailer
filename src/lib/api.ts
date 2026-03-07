@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from "axios";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+  process.env.NEXT_PUBLIC_API_URL || "https://v0-dev-trailer.vercel.app/api";
 const USE_MOCK_API = process.env.NEXT_PUBLIC_USE_MOCK_API === "true";
 
 export interface TrailerDataPayload {
@@ -99,7 +99,7 @@ class APIClient {
       name: "Restored Project (Dev Mode)",
       status: "processing",
       repo_url: "https://github.com/mock/restored",
-      live_url: "https://vercel.com",
+      live_url: "https://v0-dev-trailer.vercel.app",
       description: "Restored after dev refresh.",
       duration: "60",
       created_at: new Date().toISOString(),
