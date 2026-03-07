@@ -18,14 +18,14 @@ export const TextGenerateEffect = ({
   return (
     <div className={cn("flex flex-wrap gap-x-2 gap-y-1 font-bold", className)}>
       {wordsArray.map((word, idx) => {
-        // Stagger each word by 4 frames
-        const delay = idx * 4;
+        // Stagger each word by 8 frames (slower for 8-second scenes)
+        const delay = idx * 8;
 
-        // Remotion Spring Physics (replaces Framer Motion)
+        // Remotion Spring Physics (original slower animation)
         const wordAnimation = spring({
           frame: frame - delay,
           fps,
-          config: { damping: 14, stiffness: 100 },
+          config: { damping: 14, stiffness: 100 }, // Original values
         });
 
         // Interpolate blur from 10px to 0px

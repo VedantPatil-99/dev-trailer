@@ -8,7 +8,7 @@ export const RemotionRoot = () => {
       <Composition
         id="DevTrailerMain"
         component={MainVideo}
-        durationInFrames={1800}
+        durationInFrames={1800} // 60 seconds total: 5s intro + 8s per scene + transitions + 5s outro
         fps={30}
         width={1920}
         height={1080}

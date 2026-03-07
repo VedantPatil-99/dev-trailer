@@ -13,7 +13,7 @@ export const VideoPlayer = ({ inputProps = {} }: VideoPlayerProps) => {
     <div className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_0_40px_-10px_rgba(16,185,129,0.15)]">
       <Player
         component={MainVideo}
-        durationInFrames={300}
+        durationInFrames={1800}
         compositionWidth={1920}
         compositionHeight={1080}
         fps={30}

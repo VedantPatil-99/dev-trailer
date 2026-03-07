@@ -5,6 +5,7 @@ import { springTiming, TransitionSeries } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { AbsoluteFill } from "remotion";
 
+import { IntroScene } from "./scenes/IntroScene";
 import { ShowcaseScene } from "./scenes/ShowcaseScene";
 
 interface TrailerData {
@@ -32,10 +33,27 @@ export const MainVideo = (props: TrailerData) => {
       {voiceoverUrl && <Audio src={voiceoverUrl} volume={1} />}
       {screenshot && scenes.length > 0 ? (
         <TransitionSeries>
+          {/* Intro Scene - 5 seconds */}
+          <TransitionSeries.Sequence durationInFrames={150}>
+            <IntroScene
+              script={scenes[0]?.script || "Welcome to our amazing project"}
+              theme={{ primary: primaryColor, background: "#0a0a0a" }}
+            />
+          </TransitionSeries.Sequence>
+
+          {/* Fade to first showcase scene */}
+          <TransitionSeries.Transition
+            presentation={fade()}
+            timing={springTiming({
+              config: { damping: 200 },
+              durationInFrames: 45,
+            })}
+          />
+
+          {/* Showcase Scenes - 8 seconds each */}
           {scenes.map((scene, index) => (
             <React.Fragment key={index}>
-              {/* Each scene plays for 6 seconds (180 frames) */}
-              <TransitionSeries.Sequence durationInFrames={180}>
+              <TransitionSeries.Sequence durationInFrames={240}>
                 <ShowcaseScene
                   screenshot={screenshot}
                   boundingBox={scene.boundingBox}
@@ -44,18 +62,37 @@ export const MainVideo = (props: TrailerData) => {
                 />
               </TransitionSeries.Sequence>
 
-              {/* Slow, elegant 1.5-second fade between components */}
+              {/* Slow, elegant 2-second fade between components */}
               {index < scenes.length - 1 && (
                 <TransitionSeries.Transition
                   presentation={fade()}
                   timing={springTiming({
                     config: { damping: 200 },
-                    durationInFrames: 45,
+                    durationInFrames: 60,
                   })}
                 />
               )}
             </React.Fragment>
           ))}
+
+          {/* Outro Scene - 5 seconds */}
+          {scenes.length > 0 && (
+            <>
+              <TransitionSeries.Transition
+                presentation={fade()}
+                timing={springTiming({
+                  config: { damping: 200 },
+                  durationInFrames: 45,
+                })}
+              />
+              <TransitionSeries.Sequence durationInFrames={150}>
+                <IntroScene
+                  script="Thank you for watching!"
+                  theme={{ primary: primaryColor, background: "#0a0a0a" }}
+                />
+              </TransitionSeries.Sequence>
+            </>
+          )}
         </TransitionSeries>
       ) : (
         <h1 className="text-5xl font-bold tracking-tight text-emerald-400">

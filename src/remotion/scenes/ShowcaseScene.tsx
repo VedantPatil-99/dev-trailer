@@ -27,29 +27,40 @@ export const ShowcaseScene = ({
   const targetX = boundingBox.x + boundingBox.width / 2;
   const targetY = boundingBox.y + boundingBox.height / 2;
 
-  // SLOW, cinematic ease-in (duration: 6 seconds)
+  // SLOW, cinematic ease-in (duration: 8 seconds to match new scene length)
   const animationProgress = spring({
     frame,
     fps,
-    config: { damping: 200, stiffness: 10 }, // Very low stiffness for slow movement
-    durationInFrames: 180,
+    config: { damping: 200, stiffness: 10 }, // Original slow movement
+    durationInFrames: 240,
   });
 
-  // Deep zoom and pan
-  const scale = interpolate(animationProgress, [0, 1], [1, 2.2]);
-  const rotateX = interpolate(animationProgress, [0, 1], [25, 0]);
+  // Gentle zoom and pan (original values)
+  const scale = interpolate(animationProgress, [0, 0.7, 1], [1, 1.5, 1.3]);
+  const rotateX = interpolate(animationProgress, [0, 0.7, 1], [20, 0, -3]);
+
+  // Add subtle rotation for more visual interest
+  const rotateZ = interpolate(animationProgress, [0, 1], [0, 1]);
+
+  // Fade in effect to prevent blackout
+  const opacity = interpolate(
+    animationProgress,
+    [0, 0.1, 0.9, 1],
+    [0, 1, 1, 0.9]
+  );
 
   return (
     <AbsoluteFill className="flex items-center justify-center bg-neutral-900 perspective-[2500px]">
       <AbsoluteFill
         style={{
-          transform: `scale(${scale}) rotateX(${rotateX}deg)`,
+          transform: `scale(${scale}) rotateX(${rotateX}deg) rotateZ(${rotateZ}deg)`,
           transformOrigin: `${targetX}px ${targetY}px`,
           transformStyle: "preserve-3d",
+          opacity,
         }}
         className="flex items-center justify-center shadow-2xl shadow-black/50"
       >
-        <Img src={screenshot} className="w-480 object-cover opacity-80" />
+        <Img src={screenshot} className="w-480 object-cover opacity-90" />
       </AbsoluteFill>
 
       {/* The Cinematic Text Overlay */}
