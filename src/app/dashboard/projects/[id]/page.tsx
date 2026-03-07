@@ -57,6 +57,7 @@ export default function ProjectDetailsPage({
   const [isSaving, setIsSaving] = useState(false);
   const [currentLogIndex, setCurrentLogIndex] = useState(0);
   const terminalRef = useRef<HTMLDivElement>(null);
+  const statusPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const terminalLogs = [
     "Initializing Virtual Cinematographer...",
@@ -76,21 +77,48 @@ export default function ProjectDetailsPage({
   ];
 
   const { updateProjectScript } = useProjects();
-  // --- 1. First useEffect: Fetches project and polls status ---
+  const dataFetchedRef = useRef(false);
+  // --- 1. Fetch project and status; restore saved trailer if present ---
   useEffect(() => {
+    if (dataFetchedRef.current) return;
+    dataFetchedRef.current = true;
+
     const fetchProject = async () => {
       try {
         setIsLoading(true);
-
-        // Fetch project details
         const projectRes = await apiClient.getProject(projectId);
         const data = projectRes.data;
         setProjectData(data);
         setScript(data.script || "");
 
-        // Fetch status
+        if (data.trailer_data) {
+          setTrailerData(data.trailer_data as TrailerData);
+          const scriptFromScenes = (data.trailer_data as TrailerData).scenes
+            ?.map((s: { script: string }) => s.script)
+            .join(" ");
+          if (scriptFromScenes) setScript(scriptFromScenes);
+        }
+
         const statusRes = await apiClient.getProjectStatus(projectId);
         setStatusData(statusRes.data);
+
+        const alreadyDone =
+          data.trailer_data != null || statusRes.data?.status === "completed";
+        if (alreadyDone) return;
+
+        statusPollRef.current = setInterval(async () => {
+          try {
+            const statusRes = await apiClient.getProjectStatus(projectId);
+            const next = statusRes.data;
+            setStatusData(next);
+            if (next?.status === "completed" && statusPollRef.current != null) {
+              clearInterval(statusPollRef.current);
+              statusPollRef.current = null;
+            }
+          } catch {
+            // ignore
+          }
+        }, 5000);
       } catch (error) {
         console.error("Failed to fetch project:", error);
         toast.error("Failed to load project");
@@ -101,52 +129,57 @@ export default function ProjectDetailsPage({
 
     fetchProject();
 
-    // Poll for status updates every 5 seconds
-    const interval = setInterval(async () => {
-      try {
-        const statusRes = await apiClient.getProjectStatus(projectId);
-        setStatusData(statusRes.data);
-      } catch (error) {
-        console.error("Failed to update status:", error);
+    return () => {
+      if (statusPollRef.current != null) {
+        clearInterval(statusPollRef.current);
+        statusPollRef.current = null;
       }
-    }, 5000);
-
-    return () => clearInterval(interval);
+    };
   }, [projectId]);
 
-  // --- 2. Second useEffect: Fetches mock video data when complete ---
+  // --- 2. Generate video only when completed and no saved trailer ---
+  const generationAttemptedRef = useRef(false);
   useEffect(() => {
-    const fetchVideoData = async () => {
-      if (statusData?.status === "completed" && !trailerData) {
-        try {
-          const res = await fetch("/api/generate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              projectName: projectData?.name || "Mock Project",
-              repoUrl: projectData?.repo_url || "", // <-- ADDED THIS
-              liveUrl: projectData?.live_url || "", // <-- ADDED THIS
-            }),
-          });
-          const data = await res.json();
+    const generateAndSaveTrailer = async () => {
+      const hasSavedTrailer = projectData?.trailer_data != null;
+      if (
+        statusData?.status !== "completed" ||
+        trailerData ||
+        hasSavedTrailer ||
+        !projectData?.name ||
+        generationAttemptedRef.current
+      )
+        return;
 
-          if (data.success) {
-            setTrailerData(data.data);
-            // Combine the script object into a readable string for the editor
-            setScript(
-              data.data.scenes
-                .map((s: { script: string }) => s.script)
-                .join(" ")
-            );
-          }
-        } catch (error) {
-          console.error("Failed to fetch mock video data", error);
+      generationAttemptedRef.current = true;
+      try {
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectName: projectData.name,
+            repoUrl: projectData.repo_url || "",
+            liveUrl: projectData.live_url || "",
+          }),
+        });
+        const data = await res.json();
+
+        if (data.success && data.data) {
+          setTrailerData(data.data);
+          const scriptText = data.data.scenes
+            ?.map((s: { script: string }) => s.script)
+            .join(" ");
+          if (scriptText) setScript(scriptText);
+          await apiClient.saveTrailerData(projectId, data.data);
         }
+      } catch (error) {
+        console.error("Failed to generate video", error);
+        toast.error("Failed to generate video");
       }
     };
 
-    fetchVideoData();
-  }, [statusData?.status, trailerData, projectData?.name]);
+    generateAndSaveTrailer();
+  }, [statusData?.status, trailerData, projectId]); // Removed unstable projectData deps
 
   // --- 3. Terminal Theater Logic ---
   useEffect(() => {
@@ -222,27 +255,35 @@ export default function ProjectDetailsPage({
           <div className="mb-8">
             <Link
               href="/dashboard"
-              className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-2"
+              className="text-muted-foreground hover:text-foreground mb-6 inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-white/5"
+              aria-label="Back to dashboard"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Dashboard
             </Link>
 
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold">{projectData.name}</h1>
-                <p className="text-muted-foreground mt-1">
-                  {projectData.repo_url}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                  {projectData.name}
+                </h1>
+                <p className="text-muted-foreground mt-1 truncate text-sm">
+                  {projectData.repo_url || "—"}
                 </p>
+                {projectData.trailer_data && (
+                  <p className="text-muted-foreground mt-2 text-xs">
+                    Video saved · open and reload without re-generating
+                  </p>
+                )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex shrink-0 gap-2">
                 {statusData?.status === "completed" && (
                   <>
-                    <Button variant="outline">
+                    <Button variant="outline" className="border-white/20">
                       <Share2 className="mr-2 h-4 w-4" />
                       Share
                     </Button>
-                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg">
                       <Download className="mr-2 h-4 w-4" />
                       Download
                     </Button>
@@ -256,8 +297,10 @@ export default function ProjectDetailsPage({
             {/* Main content */}
             <div className="space-y-6 lg:col-span-2">
               {/* Video Player */}
-              <Card className="p-6">
-                <h2 className="mb-4 text-xl font-bold">Video Preview</h2>
+              <Card className="overflow-hidden border-white/10 bg-white/5 p-6 shadow-xl">
+                <h2 className="mb-4 text-lg font-semibold tracking-tight">
+                  Video Preview
+                </h2>
                 {statusData?.status === "processing" ? (
                   <div className="bg-secondary flex aspect-video items-center justify-center rounded-lg">
                     <div className="text-center">
@@ -273,9 +316,11 @@ export default function ProjectDetailsPage({
               </Card>
 
               {/* Script Editor */}
-              <Card className="p-6">
+              <Card className="border-white/10 bg-white/5 p-6">
                 <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-xl font-bold">Video Script</h2>
+                  <h2 className="text-lg font-semibold tracking-tight">
+                    Video Script
+                  </h2>
                   {isEditing ? (
                     <div className="flex gap-2">
                       <Button
