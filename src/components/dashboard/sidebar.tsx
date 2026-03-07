@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { Film, LayoutDashboard, LogOut, Settings } from "lucide-react";
 
+import { isSupabaseConfigured, supabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -15,6 +16,18 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    if (isSupabaseConfigured && supabase) {
+      await supabase.auth.signOut();
+      router.push("/auth/login");
+      router.refresh();
+    } else {
+      router.push("/");
+      router.refresh();
+    }
+  };
 
   return (
     <div className="bg-card border-border flex min-h-screen w-64 flex-col border-r p-6">
@@ -54,7 +67,12 @@ export default function Sidebar() {
       </nav>
 
       {/* Logout */}
-      <button className="text-muted-foreground hover:text-foreground hover:bg-secondary flex w-full items-center gap-3 rounded-lg px-4 py-2 transition-colors">
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="text-muted-foreground hover:text-foreground hover:bg-secondary flex w-full items-center gap-3 rounded-lg px-4 py-2 transition-colors"
+        aria-label="Log out"
+      >
         <LogOut className="h-5 w-5" />
         <span className="text-sm font-medium">Log out</span>
       </button>
